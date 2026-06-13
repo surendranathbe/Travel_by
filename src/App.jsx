@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Home from './pages/Home';
 import AboutUs from './pages/AboutUs';
 import Trips from './pages/Trips';
@@ -6,14 +6,78 @@ import Vehicles from './pages/Vehicles';
 import ClientResponse from './pages/ClientResponse';
 import ContactUs from './pages/ContactUs';
 import BookingVehicles from './pages/BookingVehicles';
+import Auth from './pages/Auth';
 import travelByLogo from './assets/travel_by.png';
 import Footer from './components/Footer';
 import { Menu, X } from 'lucide-react';
+import { supabase } from './utils/supabase';
 import './App.css';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('signup'); // Default to signup
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('travelBy_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    // Run connection test on mount (fully safe since client returns null instead of throwing on missing config)
+    if (supabase) {
+      supabase.from('_connection_test').select('*').limit(1)
+        .then(({ error }) => {
+          if (error && (error.code === 'PGRST301' || error.message?.includes('JWT') || error.status === 401)) {
+            console.error('❌ Supabase connection failed: Invalid API key or configuration.', error.message);
+          } else if (error && error.message?.includes('Failed to fetch')) {
+            console.error('❌ Supabase connection failed: Network error. Check your connection or Supabase URL.', error.message);
+          } else {
+            console.log('⚡ Supabase connection successfully established with project!');
+          }
+        })
+        .catch((err) => {
+          console.error('❌ Supabase health check query crashed:', err);
+        });
+    } else {
+      console.warn('⚠️ Supabase client is not initialized. Please verify your environment variables in .env.');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isProfileDropdownOpen) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.header-avatar-badge-container')) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [isProfileDropdownOpen]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('travelBy_user');
+    setUser(null);
+    setCurrentPage('home');
+    alert('Logged out successfully. Have a nice day! 👋');
+  };
+
+  const handleLoginSuccess = (userData) => {
+    localStorage.setItem('travelBy_user', JSON.stringify(userData));
+    setUser(userData);
+    setCurrentPage('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigateToAuth = (mode) => {
+    setAuthMode(mode);
+    setCurrentPage('auth');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -21,16 +85,18 @@ function App() {
         return <Home />;
       case 'about':
         return <AboutUs />;
+      case 'auth':
+        return <Auth onLoginSuccess={handleLoginSuccess} initialMode={authMode} key={authMode} />;
       case 'trips':
-        return <Trips />;
+        return user ? <Trips /> : <Auth onLoginSuccess={handleLoginSuccess} initialMode="signup" key="signup" />;
       case 'vehicles':
-        return <Vehicles />;
+        return user ? <Vehicles /> : <Auth onLoginSuccess={handleLoginSuccess} initialMode="signup" key="signup" />;
       case 'client-response':
-        return <ClientResponse />;
+        return user ? <ClientResponse /> : <Auth onLoginSuccess={handleLoginSuccess} initialMode="signup" key="signup" />;
       case 'contact':
-        return <ContactUs />;
+        return user ? <ContactUs /> : <Auth onLoginSuccess={handleLoginSuccess} initialMode="signup" key="signup" />;
       case 'booking-vehicles':
-        return <BookingVehicles />;
+        return user ? <BookingVehicles /> : <Auth onLoginSuccess={handleLoginSuccess} initialMode="signup" key="signup" />;
       default:
         return <Home />;
     }
@@ -59,25 +125,49 @@ function App() {
             About Us
           </button>
           <button 
-            onClick={() => setCurrentPage('trips')} 
-            className={`nav-item ${currentPage === 'trips' ? 'active' : ''}`}
-          >
-            Trips
-          </button>
-          <button 
-            onClick={() => setCurrentPage('vehicles')} 
+            onClick={() => {
+              if (user) {
+                setCurrentPage('vehicles');
+              } else {
+                handleNavigateToAuth('signup');
+              }
+            }} 
             className={`nav-item ${currentPage === 'vehicles' ? 'active' : ''}`}
           >
             Vehicles
           </button>
           <button 
-            onClick={() => setCurrentPage('client-response')} 
-            className={`nav-item ${currentPage === 'client-response' ? 'active' : ''}`}
+            onClick={() => {
+              if (user) {
+                setCurrentPage('trips');
+              } else {
+                handleNavigateToAuth('signup');
+              }
+            }} 
+            className={`nav-item ${currentPage === 'trips' ? 'active' : ''}`}
           >
-            Client Response
+            Trips
           </button>
           <button 
-            onClick={() => setCurrentPage('contact')} 
+            onClick={() => {
+              if (user) {
+                setCurrentPage('client-response');
+              } else {
+                handleNavigateToAuth('signup');
+              }
+            }} 
+            className={`nav-item ${currentPage === 'client-response' ? 'active' : ''}`}
+          >
+            Client Reviews
+          </button>
+          <button 
+            onClick={() => {
+              if (user) {
+                setCurrentPage('contact');
+              } else {
+                handleNavigateToAuth('signup');
+              }
+            }} 
             className={`nav-item ${currentPage === 'contact' ? 'active' : ''}`}
           >
             Contact Us
@@ -85,12 +175,75 @@ function App() {
         </nav>
 
         <div className="nav-actions desktop-only">
-          <button 
-            onClick={() => setCurrentPage('booking-vehicles')} 
-            className="btn-booking"
-          >
-            Booking Vehicles
-          </button>
+          {user ? (
+            <div className="header-user-profile" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button 
+                onClick={() => setCurrentPage('booking-vehicles')} 
+                className="btn-booking"
+              >
+                Booking Vehicles
+              </button>
+              <div className="header-avatar-badge-container" style={{ position: 'relative' }}>
+                <div 
+                  className="header-avatar-badge" 
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  <img src={user.profile_pic} alt={user.first_name} className="header-avatar-img" />
+                  <span className="header-username" title={`${user.first_name} ${user.last_name}`}>
+                    {user.first_name}
+                  </span>
+                  <span style={{ fontSize: '0.65rem', color: '#64748b', marginLeft: '2px' }}>
+                    {isProfileDropdownOpen ? '▲' : '▼'}
+                  </span>
+                </div>
+                {isProfileDropdownOpen && (
+                  <div className="profile-dropdown-menu" style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+                    zIndex: 20,
+                    minWidth: '160px',
+                    overflow: 'hidden',
+                    animation: 'fadeIn 0.2s ease-out'
+                  }}>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsProfileDropdownOpen(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        color: '#ef4444',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'var(--transition)'
+                      }}
+                      className="dropdown-logout-btn"
+                    >
+                      🚪 Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => handleNavigateToAuth('signup')} className="btn-signin-nav">
+              Create an Account
+            </button>
+          )}
         </div>
 
         {/* Hamburger Toggle Button (Mobile Only) */}
@@ -130,37 +283,86 @@ function App() {
             About Us
           </button>
           <button 
-            onClick={() => { setCurrentPage('trips'); setIsMobileMenuOpen(false); }} 
-            className={`mobile-nav-item ${currentPage === 'trips' ? 'active' : ''}`}
-          >
-            Trips
-          </button>
-          <button 
-            onClick={() => { setCurrentPage('vehicles'); setIsMobileMenuOpen(false); }} 
+            onClick={() => { 
+              if (user) {
+                setCurrentPage('vehicles'); 
+              } else {
+                handleNavigateToAuth('signup');
+              }
+              setIsMobileMenuOpen(false); 
+            }} 
             className={`mobile-nav-item ${currentPage === 'vehicles' ? 'active' : ''}`}
           >
             Vehicles
           </button>
           <button 
-            onClick={() => { setCurrentPage('client-response'); setIsMobileMenuOpen(false); }} 
-            className={`mobile-nav-item ${currentPage === 'client-response' ? 'active' : ''}`}
+            onClick={() => { 
+              if (user) {
+                setCurrentPage('trips'); 
+              } else {
+                handleNavigateToAuth('signup');
+              }
+              setIsMobileMenuOpen(false); 
+            }} 
+            className={`mobile-nav-item ${currentPage === 'trips' ? 'active' : ''}`}
           >
-            Client Response
+            Trips
           </button>
           <button 
-            onClick={() => { setCurrentPage('contact'); setIsMobileMenuOpen(false); }} 
+            onClick={() => { 
+              if (user) {
+                setCurrentPage('client-response'); 
+              } else {
+                handleNavigateToAuth('signup');
+              }
+              setIsMobileMenuOpen(false); 
+            }} 
+            className={`mobile-nav-item ${currentPage === 'client-response' ? 'active' : ''}`}
+          >
+            Client Reviews
+          </button>
+          <button 
+            onClick={() => { 
+              if (user) {
+                setCurrentPage('contact'); 
+              } else {
+                handleNavigateToAuth('signup');
+              }
+              setIsMobileMenuOpen(false); 
+            }} 
             className={`mobile-nav-item ${currentPage === 'contact' ? 'active' : ''}`}
           >
             Contact Us
           </button>
           
           <div className="mobile-btn-container">
-            <button 
-              onClick={() => { setCurrentPage('booking-vehicles'); setIsMobileMenuOpen(false); }} 
-              className="btn-booking mobile-booking-btn"
-            >
-              Booking Vehicles
-            </button>
+            {user ? (
+              <div className="mobile-user-profile-wrap">
+                <div className="mobile-avatar-badge">
+                  <img src={user.profile_pic} alt={`${user.first_name} ${user.last_name}`} className="mobile-avatar-img" />
+                  <span className="mobile-username">{user.first_name} {user.last_name}</span>
+                </div>
+                <button 
+                  onClick={() => { setCurrentPage('booking-vehicles'); setIsMobileMenuOpen(false); }} 
+                  className="btn-booking mobile-booking-btn"
+                >
+                  Booking Vehicles
+                </button>
+                <button 
+                  onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} 
+                  className="btn-logout-mobile"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => { handleNavigateToAuth('signup'); setIsMobileMenuOpen(false); }} 
+                className="btn-booking mobile-booking-btn"
+              >
+                Create an Account
+              </button>
+            )}
           </div>
         </nav>
       </div>

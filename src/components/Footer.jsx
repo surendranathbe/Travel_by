@@ -135,7 +135,8 @@ export default function Footer({ setCurrentPage }) {
       </div>
 
       <div className="footer-bottom-bar">
-        <p>&copy; {new Date().getFullYear()} Travel_by. All rights reserved. Created with ❤️ for premium journeys.</p>
+        <p>&copy; {new Date().getFullYear()} Travel_by. All rights reserved. Designed &
+                            Maintained by Bezawada Surendra Nath.</p>
       </div>
     </footer>
   );

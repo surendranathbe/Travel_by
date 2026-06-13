@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import bannerBg from '../assets/indian_travel_banner.png';
 import servicesImg from '../assets/travel_services.png';
 import quickDeliveryImg from '../assets/quick_delivery.png';
@@ -6,16 +5,6 @@ import reasonablePricesImg from '../assets/reasonable_prices.png';
 import indiaMapImg from '../assets/india_map_coverage.png';
 
 export default function Home() {
-  const [date, setDate] = useState('');
-  const [days, setDays] = useState(1);
-  const [persons, setPersons] = useState(1);
-  const [vehicleType, setVehicleType] = useState('cars');
-
-  const handleCheck = (e) => {
-    e.preventDefault();
-    alert(`🔍 Checking availability:\nVehicle Type: ${vehicleType.toUpperCase()}\nDate: ${date}\nDuration: ${days} Day(s)\nPersons: ${persons} Person(s)`);
-  };
-
   return (
     <div className="home-page-container">
       {/* 1920*600 Banner Section */}
@@ -25,72 +14,6 @@ export default function Home() {
           style={{ backgroundImage: `url(${bannerBg})` }}
         >
           <div className="banner-overlay"></div>
-          <div className="banner-content">
-            <div className="booking-card">
-              <h3>Check Vehicle Availability</h3>
-              <p>Find the best Cars, Bikes, and Scooties for your next road trip</p>
-              
-              <form onSubmit={handleCheck} className="availability-form">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="vehicle-type">Vehicle Type</label>
-                    <select 
-                      id="vehicle-type" 
-                      value={vehicleType} 
-                      onChange={(e) => setVehicleType(e.target.value)}
-                    >
-                      <option value="cars">Cars</option>
-                      <option value="bikes">Bikes</option>
-                      <option value="scooty">Scooty</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="pickup-date">Pickup Date</label>
-                    <input 
-                      id="pickup-date"
-                      type="date" 
-                      required 
-                      value={date} 
-                      onChange={(e) => setDate(e.target.value)} 
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="trip-days">Trip Duration (Days)</label>
-                    <input 
-                      id="trip-days"
-                      type="number" 
-                      min="1" 
-                      max="30"
-                      required 
-                      value={days} 
-                      onChange={(e) => setDays(Number(e.target.value))} 
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="persons-count">Number of Persons</label>
-                    <input 
-                      id="persons-count"
-                      type="number" 
-                      min="1" 
-                      max="10"
-                      required 
-                      value={persons} 
-                      onChange={(e) => setPersons(Number(e.target.value))} 
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="btn-check-avail">
-                  Check Availability
-                </button>
-              </form>
-            </div>
-          </div>
         </div>
       </div>
 
