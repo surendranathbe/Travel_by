@@ -119,3 +119,35 @@ VALUES ('test@driver.com', 'Driver@123', 'John', 'Driver', '9876543210', 'car', 
 ON CONFLICT (email) DO UPDATE 
 SET password = EXCLUDED.password;
 
+-- =====================================================================
+-- SQL Script to create the driver_documents table in Supabase
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.driver_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    driver_id UUID REFERENCES public.drivers(id) ON DELETE CASCADE,
+    driver_name TEXT NOT NULL,
+    email TEXT UNIQUE REFERENCES public.drivers(email) ON DELETE CASCADE,
+    mobile_number TEXT NOT NULL,
+    passport_pic TEXT, -- Base64 encoded file data
+    passport_pic_name TEXT,
+    tenth_certificate TEXT, -- Base64 encoded file data
+    tenth_certificate_name TEXT,
+    driving_license TEXT, -- Base64 encoded file data
+    driving_license_name TEXT,
+    bike_image TEXT, -- Base64 encoded file data
+    bike_image_name TEXT,
+    verification_status TEXT DEFAULT 'pending', -- 'pending', 'verified', 'unlegal'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.driver_documents ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for public access (Select, Insert, Update)
+CREATE POLICY "Allow public read access for driver_documents" ON public.driver_documents FOR SELECT USING (true);
+CREATE POLICY "Allow public insert access for driver_documents" ON public.driver_documents FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update access for driver_documents" ON public.driver_documents FOR UPDATE USING (true);
+
+
+

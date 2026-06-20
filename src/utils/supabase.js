@@ -555,4 +555,213 @@ export async function fetchDrivers() {
   return rawDrivers;
 }
 
+// Save driver documents to driver_documents table
+export async function saveDriverDocuments(docData) {
+  if (!supabase) {
+    console.warn('Supabase not initialized. Document saved locally.');
+    return docData;
+  }
+
+  const emailClean = docData.email.toLowerCase().trim();
+
+  // Upsert or insert depending on if there is already a record for this email
+  const { data: existing, error: checkError } = await supabase
+    .from('driver_documents')
+    .select('id')
+    .eq('email', emailClean)
+    .maybeSingle();
+
+  if (checkError) throw checkError;
+
+  let result;
+  if (existing) {
+    const { data, error } = await supabase
+      .from('driver_documents')
+      .update({
+        driver_name: docData.driver_name,
+        mobile_number: docData.mobile_number,
+        passport_pic: docData.passport_pic,
+        passport_pic_name: docData.passport_pic_name,
+        tenth_certificate: docData.tenth_certificate,
+        tenth_certificate_name: docData.tenth_certificate_name,
+        driving_license: docData.driving_license,
+        driving_license_name: docData.driving_license_name,
+        bike_image: docData.bike_image,
+        bike_image_name: docData.bike_image_name,
+        driver_id: docData.driver_id
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+    if (error) throw error;
+    result = data;
+  } else {
+    const { data, error } = await supabase
+      .from('driver_documents')
+      .insert([
+        {
+          driver_id: docData.driver_id,
+          driver_name: docData.driver_name,
+          email: emailClean,
+          mobile_number: docData.mobile_number,
+          passport_pic: docData.passport_pic,
+          passport_pic_name: docData.passport_pic_name,
+          tenth_certificate: docData.tenth_certificate,
+          tenth_certificate_name: docData.tenth_certificate_name,
+          driving_license: docData.driving_license,
+          driving_license_name: docData.driving_license_name,
+          bike_image: docData.bike_image,
+          bike_image_name: docData.bike_image_name
+        }
+      ])
+      .select()
+      .single();
+    if (error) throw error;
+    result = data;
+  }
+
+  // Log the document upload event to system_logs
+  try {
+    await supabase.from('system_logs').insert([
+      {
+        category: 'DOCUMENT UPLOAD',
+        message: `Driver documents updated for: ${docData.driver_name} (${emailClean}).`
+      }
+    ]);
+  } catch (err) {
+    console.warn('Failed to insert document log:', err);
+  }
+
+  return result;
+}
+
+// Fetch driver documents by email
+export async function fetchDriverDocuments(email) {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('driver_documents')
+      .select('*')
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.warn('Failed to fetch driver documents from Supabase:', err);
+    return null;
+  }
+}
+
+// Fetch all driver documents
+export async function fetchAllDriverDocuments() {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from('driver_documents')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('Failed to fetch all driver documents from Supabase:', err);
+    return [];
+  }
+}
+
+// Update driver document verification status and sync with drivers table
+export async function updateDocumentVerification(docId, verificationStatus, driverId) {
+  if (!supabase) return null;
+
+  let updatedDoc = null;
+  let docErrorOccurred = false;
+
+  // 1. Try to update verification_status in driver_documents table
+  try {
+    const { data, error: docError } = await supabase
+      .from('driver_documents')
+      .update({ verification_status: verificationStatus })
+      .eq('id', docId)
+      .select()
+      .maybeSingle();
+
+    if (docError) {
+      console.warn('Could not update verification_status column in driver_documents table:', docError);
+      docErrorOccurred = true;
+    } else {
+      updatedDoc = data;
+    }
+  } catch (err) {
+    console.warn('Error during driver_documents verification_status update:', err);
+    docErrorOccurred = true;
+  }
+
+  // 2. Also update status in drivers table
+  const driverStatus = verificationStatus === 'verified' ? 'approved' : 'rejected';
+  let driverUpdated = false;
+
+  if (driverId) {
+    try {
+      const { error: driverError } = await supabase
+        .from('drivers')
+        .update({ status: driverStatus })
+        .eq('id', driverId);
+
+      if (driverError) {
+        console.warn('Failed to update driver status during document verification update:', driverError);
+      } else {
+        driverUpdated = true;
+      }
+    } catch (err) {
+      console.warn('Exception while updating driver status:', err);
+    }
+  }
+
+  // Fallback: If driverId was not provided or update failed, look it up by document email
+  if (!driverUpdated) {
+    try {
+      const { data: docRecord } = await supabase
+        .from('driver_documents')
+        .select('email')
+        .eq('id', docId)
+        .maybeSingle();
+
+      if (docRecord && docRecord.email) {
+        const { error: driverEmailError } = await supabase
+          .from('drivers')
+          .update({ status: driverStatus })
+          .eq('email', docRecord.email.toLowerCase().trim());
+        
+        if (driverEmailError) {
+          console.warn('Failed to update driver status by email:', driverEmailError);
+        }
+      }
+    } catch (err) {
+      console.warn('Fallback driver status update by email failed:', err);
+    }
+  }
+
+  // 3. Log event
+  try {
+    await supabase.from('system_logs').insert([
+      {
+        category: 'DOC VERIFY',
+        message: `Driver documents status set to ${verificationStatus} for driver ID ${driverId || 'unknown'}.`
+      }
+    ]);
+  } catch (err) {
+    console.warn('Log insert failed:', err);
+  }
+
+  if (docErrorOccurred || !updatedDoc) {
+    // Return a fallback object so the UI updates without crashing
+    return { id: docId, verification_status: verificationStatus };
+  }
+
+  return updatedDoc;
+}
+
+
+
 
