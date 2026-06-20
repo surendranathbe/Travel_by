@@ -346,3 +346,213 @@ export async function addSystemLog(category, message) {
     created_at: new Date().toISOString()
   };
 }
+
+// Sign up a new driver in drivers table
+export async function signUpDriver(email, password, firstName, lastName, phone, vehicleType, vehicleNumber, licenseNumber, profilePic) {
+  if (!supabase) throw new Error('Supabase client is not initialized.');
+  
+  const cleanEmail = sanitizeInput(email).toLowerCase();
+  const cleanFirstName = sanitizeInput(firstName);
+  const cleanLastName = sanitizeInput(lastName);
+  const cleanPhone = sanitizeInput(phone);
+  const cleanVehicleType = sanitizeInput(vehicleType);
+  const cleanVehicleNumber = sanitizeInput(vehicleNumber);
+  const cleanLicenseNumber = sanitizeInput(licenseNumber);
+
+  // Check if driver already exists
+  const { data: existingDriver, error: checkError } = await supabase
+    .from('drivers')
+    .select('id')
+    .eq('email', cleanEmail)
+    .maybeSingle();
+    
+  if (checkError) throw checkError;
+  if (existingDriver) {
+    throw new Error('This email is already registered as a driver.');
+  }
+
+  // Insert the new driver safely
+  const { data, error } = await supabase
+    .from('drivers')
+    .insert([
+      {
+        email: cleanEmail,
+        password: password, // plaintext for dev testing environment
+        first_name: cleanFirstName,
+        last_name: cleanLastName,
+        phone: cleanPhone,
+        vehicle_type: cleanVehicleType,
+        vehicle_number: cleanVehicleNumber,
+        license_number: cleanLicenseNumber,
+        profile_pic: profilePic || DEFAULT_AVATAR,
+        status: 'pending'
+      }
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Log the signup event to system_logs
+  try {
+    await supabase.from('system_logs').insert([
+      {
+        category: 'NEW DRIVER',
+        message: `New Driver Registered: ${cleanFirstName} ${cleanLastName} (${cleanEmail}) for ${cleanVehicleType} (${cleanVehicleNumber}).`
+      }
+    ]);
+  } catch (err) {
+    console.warn('Failed to insert driver signup log:', err);
+  }
+
+  return data;
+}
+
+// Sign in an existing driver with local fallback
+export async function signInDriver(email, password) {
+  const cleanEmail = sanitizeInput(email).toLowerCase();
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('email', cleanEmail)
+        .eq('password', password)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        // Log the login event to system_logs
+        try {
+          await supabase.from('system_logs').insert([
+            {
+              category: 'DRIVER LOGIN',
+              message: `Driver Login: ${data.first_name} ${data.last_name} (${data.email}) logged into driver portal.`
+            }
+          ]);
+        } catch (logErr) {
+          console.warn('Failed to insert driver login log:', logErr);
+        }
+        return data;
+      }
+    } catch (err) {
+      console.warn('Supabase driver lookup failed, checking local fallback.', err);
+    }
+  }
+
+  // Local fallback validation
+  if (cleanEmail === 'test@driver.com' && password === 'Driver@123') {
+    return {
+      id: 'driver-local-id',
+      email: 'test@driver.com',
+      password: 'Driver@123',
+      first_name: 'John',
+      last_name: 'Driver',
+      phone: '9876543210',
+      vehicle_type: 'car',
+      vehicle_number: 'AP-09-XX-1234',
+      license_number: 'DL-9876543210',
+      status: 'approved',
+      profile_pic: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+    };
+  }
+
+  throw new Error('Invalid driver email or password.');
+}
+
+// Update driver details
+export async function updateDriver(driverId, updates) {
+  const cleanUpdates = {};
+  if (updates.first_name !== undefined) cleanUpdates.first_name = sanitizeInput(updates.first_name);
+  if (updates.last_name !== undefined) cleanUpdates.last_name = sanitizeInput(updates.last_name);
+  if (updates.phone !== undefined) cleanUpdates.phone = sanitizeInput(updates.phone);
+  if (updates.vehicle_type !== undefined) cleanUpdates.vehicle_type = sanitizeInput(updates.vehicle_type);
+  if (updates.vehicle_number !== undefined) cleanUpdates.vehicle_number = sanitizeInput(updates.vehicle_number);
+  if (updates.license_number !== undefined) cleanUpdates.license_number = sanitizeInput(updates.license_number);
+  if (updates.profile_pic !== undefined) cleanUpdates.profile_pic = updates.profile_pic;
+  if (updates.status !== undefined) cleanUpdates.status = sanitizeInput(updates.status);
+
+  if (supabase && driverId !== 'driver-local-id') {
+    const { data, error } = await supabase
+      .from('drivers')
+      .update(cleanUpdates)
+      .eq('id', driverId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  // Mock local fallback response
+  return {
+    id: 'driver-local-id',
+    email: 'test@driver.com',
+    first_name: cleanUpdates.first_name !== undefined ? cleanUpdates.first_name : 'John',
+    last_name: cleanUpdates.last_name !== undefined ? cleanUpdates.last_name : 'Driver',
+    phone: cleanUpdates.phone !== undefined ? cleanUpdates.phone : '9876543210',
+    vehicle_type: cleanUpdates.vehicle_type !== undefined ? cleanUpdates.vehicle_type : 'car',
+    vehicle_number: cleanUpdates.vehicle_number !== undefined ? cleanUpdates.vehicle_number : 'AP-09-XX-1234',
+    license_number: cleanUpdates.license_number !== undefined ? cleanUpdates.license_number : 'DL-9876543210',
+    status: cleanUpdates.status !== undefined ? cleanUpdates.status : 'approved',
+    profile_pic: cleanUpdates.profile_pic !== undefined ? cleanUpdates.profile_pic : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+  };
+}
+
+// Fetch all registered drivers from database
+export async function fetchDrivers() {
+  let rawDrivers = null;
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        rawDrivers = data;
+      } else if (error) {
+        console.warn('Supabase drivers query failed, checking local mock fallback:', error);
+      }
+    } catch (err) {
+      console.warn('Failed to query drivers from Supabase:', err);
+    }
+  }
+
+  if (rawDrivers === null) {
+    rawDrivers = [
+      {
+        id: 'drv-mock-1',
+        first_name: 'John',
+        last_name: 'Driver',
+        email: 'test@driver.com',
+        phone: '9876543210',
+        vehicle_type: 'car',
+        vehicle_number: 'AP-09-XX-1234',
+        license_number: 'DL-9876543210',
+        status: 'approved',
+        profile_pic: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+        created_at: new Date(Date.now() - 86400000).toISOString()
+      },
+      {
+        id: 'drv-mock-2',
+        first_name: 'Surendra Nath',
+        last_name: 'Bezawada',
+        email: 'Surendra@gmail.com',
+        phone: '8688119095',
+        vehicle_type: 'bike',
+        vehicle_number: 'AP-27-CB-1644',
+        license_number: 'DL-123456789',
+        status: 'pending',
+        profile_pic: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+        created_at: new Date().toISOString()
+      }
+    ];
+  }
+
+  return rawDrivers;
+}
+
+

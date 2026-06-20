@@ -18,13 +18,15 @@ import {
   Lock
 } from 'lucide-react';
 import travelByLogo from '../assets/travel_by.png';
-import { updateAdmin, fetchAppUsers, fetchSystemLogs, supabase } from '../utils/supabase';
+import { updateAdmin, fetchAppUsers, fetchSystemLogs, fetchDrivers, updateDriver, supabase } from '../utils/supabase';
 
 export default function Dashboard({ admin, onLogout, onAdminUpdate }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [usersList, setUsersList] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [driversList, setDriversList] = useState([]);
+  const [isLoadingDrivers, setIsLoadingDrivers] = useState(true);
   const [logs, setLogs] = useState([]);
 
   // Editable profile state variables
@@ -40,9 +42,13 @@ export default function Dashboard({ admin, onLogout, onAdminUpdate }) {
   useEffect(() => {
     async function loadData() {
       setIsLoadingUsers(true);
+      setIsLoadingDrivers(true);
       try {
         const usersData = await fetchAppUsers();
         setUsersList(usersData || []);
+
+        const driversData = await fetchDrivers();
+        setDriversList(driversData || []);
 
         const logsData = await fetchSystemLogs();
         if (logsData && logsData.length > 0) {
@@ -136,6 +142,11 @@ export default function Dashboard({ admin, onLogout, onAdminUpdate }) {
         if (freshUsers) {
           setUsersList(freshUsers);
         }
+
+        const freshDrivers = await fetchDrivers();
+        if (freshDrivers) {
+          setDriversList(freshDrivers);
+        }
       } catch (err) {
         console.warn('Second-to-second polling check for logs failed:', err);
       }
@@ -173,6 +184,9 @@ export default function Dashboard({ admin, onLogout, onAdminUpdate }) {
               fetchAppUsers().then(data => {
                 if (data) setUsersList(data);
               });
+              fetchDrivers().then(data => {
+                if (data) setDriversList(data);
+              });
             }
           )
           .subscribe();
@@ -194,7 +208,7 @@ export default function Dashboard({ admin, onLogout, onAdminUpdate }) {
   const stats = [
     { label: 'Total Revenue', value: '₹0.00', icon: DollarSign, color: '#10b981' },
     { label: 'Active Users', value: String(usersList.length), icon: Users, color: '#3b82f6', action: () => setActiveTab('users') },
-    { label: 'Active Drivers', value: '0', icon: Car, color: '#f59e0b', action: () => setActiveTab('drivers') },
+    { label: 'Active Drivers', value: String(driversList.filter(d => d.status === 'approved').length), icon: Car, color: '#f59e0b', action: () => setActiveTab('drivers') },
     { label: 'Active Bookings', value: '0', icon: Calendar, color: '#a855f7', action: () => setActiveTab('trips') }
   ];
 
@@ -483,6 +497,172 @@ export default function Dashboard({ admin, onLogout, onAdminUpdate }) {
               </div>
             )}
           </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'drivers') {
+      return (
+        <div style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '20px',
+          padding: '2rem',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+          minHeight: '450px',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+              Registered Drivers
+            </h4>
+            <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontWeight: '700', padding: '4px 10px', borderRadius: '8px' }}>
+              {driversList.length} Accounts Found
+            </span>
+          </div>
+
+          {driversList.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4rem 0',
+              textAlign: 'center',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '14px',
+              backgroundColor: '#f8fafc',
+              flexGrow: 1
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                color: '#f59e0b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1.25rem'
+              }}>
+                <Car size={28} />
+              </div>
+              <h4 style={{ fontSize: '1.15rem', color: '#0f172a', margin: '0 0 6px 0', fontWeight: '800' }}>
+                No Registered Drivers
+              </h4>
+              <p style={{ color: '#64748b', fontSize: '0.85rem', maxWidth: '440px', margin: 0, lineHeight: 1.6 }}>
+                There are no driver profiles in the database. New driver onboarding applications will appear here.
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto', width: '100%' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
+                    <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Driver Details</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vehicle Details</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>License Number</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {driversList.map((drv) => (
+                    <tr key={drv.id} style={{ borderBottom: '1px solid #f1f5f9', color: '#0f172a', transition: 'background-color 0.2s' }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <td style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', flexShrink: 0 }}>
+                          <img 
+                            src={drv.profile_pic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'} 
+                            alt={drv.first_name} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80';
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: '700', display: 'block' }}>{drv.first_name} {drv.last_name}</span>
+                          <span style={{ fontSize: '0.72rem', color: '#475569', display: 'block' }}>{drv.email}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px', color: '#475569', fontSize: '0.85rem', fontWeight: '500' }}>
+                        {drv.phone || '—'}
+                      </td>
+                      <td style={{ padding: '16px', color: '#475569', fontSize: '0.85rem' }}>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: '800',
+                          backgroundColor: '#f1f5f9',
+                          color: '#334155',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          marginRight: '6px',
+                          textTransform: 'uppercase'
+                        }}>
+                          {drv.vehicle_type}
+                        </span>
+                        <span style={{ fontWeight: '600' }}>{drv.vehicle_number || '—'}</span>
+                      </td>
+                      <td style={{ padding: '16px', color: '#475569', fontSize: '0.85rem', fontFamily: 'monospace' }}>
+                        {drv.license_number || '—'}
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: '800',
+                          padding: '4px 10px',
+                          borderRadius: '9999px',
+                          backgroundColor: drv.status === 'approved' ? '#d1fae5' : drv.status === 'pending' ? '#fef3c7' : '#fee2e2',
+                          color: drv.status === 'approved' ? '#065f46' : drv.status === 'pending' ? '#92400e' : '#991b1b',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.02em'
+                        }}>
+                          {drv.status || 'pending'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        {drv.status === 'pending' ? (
+                          <button
+                            onClick={async () => {
+                              try {
+                                const updated = await updateDriver(drv.id, { status: 'approved' });
+                                setDriversList(prev => prev.map(d => d.id === drv.id ? updated : d));
+                                alert(`🎉 Driver ${drv.first_name} ${drv.last_name} approved successfully!`);
+                              } catch (err) {
+                                alert("Failed to approve driver: " + err.message);
+                              }
+                            }}
+                            style={{
+                              backgroundColor: '#10b981',
+                              color: '#ffffff',
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: '8px',
+                              fontSize: '0.75rem',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(16, 185, 129, 0.2)',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
+                            onMouseLeave={(e) => e.target.style.transform = 'none'}
+                          >
+                            Approve
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold' }}>No Actions</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       );
     }

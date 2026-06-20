@@ -74,3 +74,48 @@ INSERT INTO public.admins (username, password, first_name, last_name)
 VALUES ('Surendra@admin', 'Admin@123', 'Surendra', 'Bezawada')
 ON CONFLICT (username) DO UPDATE 
 SET password = EXCLUDED.password;
+
+-- =====================================================================
+-- SQL Script to create the drivers table in Supabase
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS public.drivers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL, -- Plain text password for developer testing environment context
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    phone TEXT,
+    vehicle_type TEXT DEFAULT 'car', -- 'car', 'bike', 'auto'
+    vehicle_number TEXT,
+    license_number TEXT,
+    profile_pic TEXT DEFAULT 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    status TEXT DEFAULT 'pending', -- 'pending', 'approved', 'active', 'inactive'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.drivers ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS Policies to allow reading and updates
+CREATE POLICY "Allow public read-only access for drivers" 
+ON public.drivers 
+FOR SELECT 
+USING (true);
+
+CREATE POLICY "Allow public insert access for drivers" 
+ON public.drivers 
+FOR INSERT 
+WITH CHECK (true);
+
+CREATE POLICY "Allow public update access for drivers" 
+ON public.drivers 
+FOR UPDATE 
+USING (true);
+
+-- Seed a test driver (email: test@driver.com, password: Driver@123)
+INSERT INTO public.drivers (email, password, first_name, last_name, phone, vehicle_type, vehicle_number, license_number, status)
+VALUES ('test@driver.com', 'Driver@123', 'John', 'Driver', '9876543210', 'car', 'AP-09-XX-1234', 'DL-9876543210', 'approved')
+ON CONFLICT (email) DO UPDATE 
+SET password = EXCLUDED.password;
+

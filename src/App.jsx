@@ -14,6 +14,9 @@ import { Menu, X, User, Car, Compass, CreditCard, History, LogOut, Camera, Save 
 import { supabase, updateUser } from './utils/supabase';
 import AdminLogin from './Admin/Login';
 import AdminDashboard from './Admin/Dashboard';
+import DriverLogin from './drivers/Login';
+import DriverRegister from './drivers/Register';
+import DriverDashboard from './drivers/Dashboard';
 import './App.css';
 
 function App() {
@@ -32,6 +35,16 @@ function App() {
       return null;
     }
   });
+
+  const [driver, setDriver] = useState(() => {
+    try {
+      const stored = localStorage.getItem('travelBy_driver');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [driverAuthMode, setDriverAuthMode] = useState('login'); // 'login' or 'register'
 
   // Dashboard Modal States
   const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
@@ -295,6 +308,46 @@ function App() {
         onAdminUpdate={(updatedAdmin) => {
           setAdmin(updatedAdmin);
           localStorage.setItem('travelBy_admin', JSON.stringify(updatedAdmin));
+        }}
+      />
+    );
+  }
+
+  const isDriverPath = window.location.pathname === '/driver' || window.location.pathname === '/drivers';
+
+  if (isDriverPath) {
+    if (!driver) {
+      if (driverAuthMode === 'register') {
+        return (
+          <DriverRegister 
+            onRegisterSuccess={(data) => {
+              setDriver(data);
+              localStorage.setItem('travelBy_driver', JSON.stringify(data));
+            }}
+            onNavigateToLogin={() => setDriverAuthMode('login')}
+          />
+        );
+      }
+      return (
+        <DriverLogin 
+          onLoginSuccess={(data) => {
+            setDriver(data);
+            localStorage.setItem('travelBy_driver', JSON.stringify(data));
+          }}
+          onNavigateToRegister={() => setDriverAuthMode('register')}
+        />
+      );
+    }
+    return (
+      <DriverDashboard 
+        driver={driver}
+        onLogout={() => {
+          setDriver(null);
+          localStorage.removeItem('travelBy_driver');
+        }}
+        onDriverUpdate={(updatedDriver) => {
+          setDriver(updatedDriver);
+          localStorage.setItem('travelBy_driver', JSON.stringify(updatedDriver));
         }}
       />
     );
