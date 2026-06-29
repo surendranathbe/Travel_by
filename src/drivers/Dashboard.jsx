@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { updateDriver, fetchDriverDocuments, supabase } from '../utils/supabase';
-import { User, Shield, LogOut, CheckCircle, Clock, MapPin, IndianRupee, Star, Settings, Power, Bell, Compass, Upload, Trash2, FileText, AlertCircle, Target, XCircle, MessageSquare, Menu, X, Wallet } from 'lucide-react';
+import { updateDriver, fetchDriverDocuments, supabase, fetchDriverByEmail } from '../utils/supabase';
+import { User, Shield, LogOut, CheckCircle, Clock, MapPin, IndianRupee, Star, Settings, Power, Bell, Compass, Upload, Trash2, FileText, AlertCircle, Target, XCircle, MessageSquare, Menu, X, Wallet, Camera } from 'lucide-react';
 import travelByLogo from '../assets/travel_by.png';
 import DocumentForm from './DocumentForm';
 
@@ -54,19 +54,12 @@ export default function Dashboard({ driver, onLogout, onDriverUpdate }) {
         try {
           // 1. Fetch live driver status from database to get the latest approved/rejected status
           let liveDriverStatus = driver.status;
-          if (supabase) {
-            const { data: freshDriver, error: freshErr } = await supabase
-              .from('drivers')
-              .select('status')
-              .eq('email', driver.email.toLowerCase().trim())
-              .maybeSingle();
-            
-            if (!freshErr && freshDriver) {
-              liveDriverStatus = freshDriver.status;
-              // Update local state if the status has changed
-              if (freshDriver.status !== driver.status && onDriverUpdate) {
-                onDriverUpdate({ ...driver, status: freshDriver.status });
-              }
+          // Fetch fresh driver details from MongoDB API
+          const freshDriver = await fetchDriverByEmail(driver.email);
+          if (freshDriver) {
+            liveDriverStatus = freshDriver.status;
+            if (freshDriver.status !== driver.status && onDriverUpdate) {
+              onDriverUpdate({ ...driver, status: freshDriver.status });
             }
           }
 
@@ -161,6 +154,50 @@ export default function Dashboard({ driver, onLogout, onDriverUpdate }) {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Please select an image smaller than 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 150;
+        const MAX_HEIGHT = 150;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setProfilePic(dataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAcceptRide = () => {
@@ -1427,15 +1464,62 @@ export default function Dashboard({ driver, onLogout, onDriverUpdate }) {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Avatar Image URL</label>
-                    <input
-                      type="text"
-                      value={profilePic}
-                      onChange={(e) => setProfilePic(e.target.value)}
-                      style={editInputStyle}
-                      placeholder="Provide image link"
-                    />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '1.25rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Driver Profile Photo</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+                      <div style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '50%', overflow: 'hidden', border: '3px solid #0ea5e9', boxShadow: '0 4px 10px rgba(14, 165, 233, 0.15)' }}>
+                        <img 
+                          src={profilePic || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'} 
+                          alt="Avatar Preview" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80';
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label 
+                          htmlFor="driver-avatar-file" 
+                          style={{
+                            backgroundColor: '#0ea5e9',
+                            color: '#ffffff',
+                            borderRadius: '8px',
+                            padding: '0.5rem 1rem',
+                            fontSize: '0.85rem',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 2px 8px rgba(14, 165, 233, 0.2)'
+                          }}
+                        >
+                          <Camera size={14} />
+                          <span>Choose Local Photo</span>
+                        </label>
+                        <input 
+                          id="driver-avatar-file"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePicChange}
+                          style={{ display: 'none' }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          Upload PNG or JPG (will be optimized to 150x150)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' }}>Or Paste Image URL</label>
+                      <input
+                        type="text"
+                        value={profilePic}
+                        onChange={(e) => setProfilePic(e.target.value)}
+                        style={{ ...editInputStyle, padding: '0.6rem 0.9rem', fontSize: '0.85rem' }}
+                        placeholder="Provide image link"
+                      />
+                    </div>
                   </div>
 
                   <button

@@ -1,0 +1,488 @@
+/* BookRide layout styles */
+.book-ride-page {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 80px); /* Adjusts below main header */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.map-container-wrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Map selector mode cursor styling */
+.map-selecting-pickup {
+  cursor: crosshair !important;
+}
+.map-selecting-drop {
+  cursor: crosshair !important;
+}
+
+/* Floating booking widget */
+.booking-overlay-card {
+  position: relative;
+  z-index: 10;
+  width: 420px;
+  max-height: calc(100% - 60px);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  padding: 1.75rem;
+  margin-left: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+}
+
+/* Selection Mode Banner */
+.selection-banner {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translate(-50%, -30px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.selection-banner-pulse {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-accent);
+  border-radius: 50%;
+  animation: pulse-glow 1.5s infinite;
+}
+
+@keyframes pulse-glow {
+  0% { transform: scale(0.8); opacity: 0.5; box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+  70% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 0 8px rgba(249, 115, 22, 0); }
+  100% { transform: scale(0.8); opacity: 0.5; box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+}
+
+/* Form Styling within Card */
+.booking-form-header {
+  margin-bottom: 0.5rem;
+}
+
+.booking-form-header h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.01em;
+}
+
+.booking-form-header p {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.form-item-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-item-container label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-field-custom {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  outline: none;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: var(--transition);
+  background-color: #ffffff;
+}
+
+.input-field-custom:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.field-icon {
+  position: absolute;
+  left: 14px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+}
+
+/* Action button row under location inputs */
+.location-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.map-action-btn {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition);
+}
+
+.map-action-btn:hover {
+  background-color: #f1f5f9;
+  color: var(--color-text-primary);
+  border-color: #cbd5e1;
+}
+
+.map-action-btn.active-selecting {
+  background-color: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
+}
+
+.map-action-btn.active-selecting:hover {
+  background-color: #1e293b;
+}
+
+/* Custom Marker Styling for Leaflet */
+.custom-leaflet-marker {
+  background: none !important;
+  border: none !important;
+}
+
+.custom-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.pin-icon-inner {
+  font-size: 24px;
+  z-index: 2;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+  transition: transform 0.2s;
+}
+
+.custom-marker:hover .pin-icon-inner {
+  transform: scale(1.15) translateY(-2px);
+}
+
+.pin-pulse {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, 0.25);
+  animation: marker-pulse-anim 1.8s infinite ease-out;
+  z-index: 1;
+}
+
+.pickup-marker-pin .pin-pulse {
+  background: rgba(34, 197, 94, 0.35);
+}
+
+.drop-marker-pin .pin-pulse {
+  background: rgba(239, 68, 68, 0.35);
+}
+
+/* User profile avatar map marker styles */
+.user-profile-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px !important;
+  height: 44px !important;
+}
+
+.user-profile-marker .pin-pulse {
+  width: 52px;
+  height: 52px;
+}
+
+.profile-pic-container {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  background-color: var(--color-accent);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-pic-marker-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-marker-arrow {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #ffffff;
+  margin-top: -1px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.15));
+  z-index: 2;
+}
+
+@keyframes marker-pulse-anim {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Polyline dash animations */
+.animated-polyline {
+  stroke-dasharray: 8;
+  animation: line-dash-flow 25s linear infinite;
+}
+
+@keyframes line-dash-flow {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+/* Close/Back button */
+.btn-back-home {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-back-home:hover {
+  color: var(--color-text-primary);
+  background-color: #f8fafc;
+  transform: scale(1.05);
+}
+/* Tip alert block style */
+.mobile-hide-tip {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.4;
+  align-items: flex-start;
+}
+
+/* Submit button style */
+.btn-submit-ride {
+  background-color: var(--color-accent);
+  color: #ffffff;
+  border: none;
+  padding: 0.9rem;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: var(--transition);
+  margin-top: 0.5rem;
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  width: 100%;
+}
+
+.btn-submit-ride:hover {
+  background-color: var(--color-accent-hover);
+}
+
+@media (max-width: 768px) {
+  .book-ride-page {
+    height: calc(100vh - 80px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    background-color: #f8fafc !important;
+  }
+
+  .map-container-wrap {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: 200px !important; /* Decreased height to fit entire card on screen */
+    flex-shrink: 0 !important; /* Prevents map from squeezing to 0 height in flexbox */
+    z-index: 1 !important;
+    border-bottom: 2px solid #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  .booking-overlay-card {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    margin: 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 0.75rem 1.25rem 1rem !important; /* Compact padding */
+    box-shadow: 0 -8px 25px rgba(15, 23, 42, 0.05) !important;
+    background: #ffffff !important;
+    gap: 0.6rem !important; /* Compact gaps */
+    overflow-y: auto !important; /* Allows scrolling inside card if screen is extremely short */
+    flex-grow: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Compact Close/Back button inside map on mobile */
+  .btn-back-home {
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  .btn-back-home svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Compact header on mobile */
+  .booking-form-header {
+    margin-bottom: 0.15rem;
+  }
+  .booking-form-header h2 {
+    font-size: 1.2rem;
+  }
+  .booking-form-header p {
+    font-size: 0.78rem;
+  }
+
+  /* Compact form inputs on mobile */
+  .form-item-container {
+    gap: 0.25rem;
+  }
+  .form-item-container label {
+    font-size: 0.78rem;
+  }
+  .input-field-custom {
+    padding: 0.55rem 0.85rem 0.55rem 2.2rem;
+    font-size: 0.82rem;
+  }
+  .field-icon {
+    left: 10px;
+  }
+
+  /* Compact action buttons */
+  .location-actions-row {
+    gap: 6px;
+    margin-top: 1px;
+  }
+  .map-action-btn {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+  }
+
+  /* Hide tips on mobile */
+  .mobile-hide-tip {
+    display: none !important;
+  }
+
+  /* Compact submit button on mobile */
+  .btn-submit-ride {
+    padding: 0.7rem;
+    font-size: 0.85rem;
+    margin-top: 0.4rem;
+    border-radius: 10px;
+  }
+
+  .selection-banner {
+    width: calc(100% - 32px);
+    font-size: 0.8rem;
+    padding: 0.5rem 0.85rem;
+    top: 12px;
+  }
+}

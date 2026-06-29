@@ -243,7 +243,7 @@ function App() {
       case 'booking-vehicles':
         return user ? <BookingVehicles /> : <Auth onLoginSuccess={handleLoginSuccess} initialMode="signup" key="signup" />;
       case 'book-ride':
-        return <BookRide />;
+        return <BookRide user={user} setCurrentPage={setCurrentPage} />;
       case 'parcel-booking':
         return user ? (
           <div className="page-view flex-center-vertical" style={{ padding: '6rem 2rem', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
@@ -900,7 +900,7 @@ function App() {
 
       {/* Main Page Area */}
       <main className="content-area">
-        {pageDetails && currentPage !== 'home' && currentPage !== 'auth' && (
+        {pageDetails && currentPage !== 'home' && currentPage !== 'auth' && currentPage !== 'book-ride' && (
           <div className="inner-page-banner">
             <div className="banner-left-img"></div>
             <div className="banner-right-img"></div>
@@ -915,7 +915,7 @@ function App() {
       </main>
 
       {/* Footer */}
-      <Footer setCurrentPage={setCurrentPage} />
+      {currentPage !== 'book-ride' && <Footer setCurrentPage={setCurrentPage} />}
 
       {/* User Dashboard Modal (Profile, Payments, History) */}
       {isDashboardModalOpen && (
